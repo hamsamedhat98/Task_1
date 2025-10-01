@@ -70,7 +70,34 @@ export async function createPerk(req, res, next) {
 // TODO
 // Update an existing perk by ID and validate only the fields that are being updated 
 export async function updatePerk(req, res, next) {
-  
+  try {
+    // validate only the fields in req.body (partial update)
+    const { value, error } = perkSchema.validate(req.body, { abortEarly: false, allowUnknown: false });
+    if (error) return res.status(400).json({ message: error.message });
+
+    // find the old document first
+    const oldDoc = await Perk.findById(req.params.id);
+    if (!oldDoc) return res.status(404).json({ message: "Perk not found" });
+
+    // if discount or category were not provided in request, keep old values
+    if (value.discountPercent === undefined) {
+      value.discountPercent = oldDoc.discountPercent;
+    }
+    if (value.category === undefined) {
+      value.category = oldDoc.category;
+    }
+
+    // update document
+    const doc = await Perk.findByIdAndUpdate(
+      req.params.id,
+      { $set: value },
+      { new: true, runValidators: true }
+    );
+
+    res.json({ perk: doc });
+  } catch (err) {
+    next(err);
+  }
 }
 
 
